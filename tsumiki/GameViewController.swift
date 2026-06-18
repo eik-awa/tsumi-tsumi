@@ -1,3 +1,4 @@
+import LinkPresentation
 import UIKit
 
 class GameViewController: UIViewController {
@@ -65,9 +66,17 @@ extension GameViewController: GameViewDelegate {
         view.addSubview(overlay)
     }
 
-    func gameViewDidRequestShare(score: Int) {
-        let text = "「積み積み」で \(score) 段まで積めた！ #積み積み"
-        let items: [Any] = [text]
+    func gameViewDidRequestShare(score: Int, image: UIImage?) {
+        let text = """
+        「積み積み」で \(score) 段まで積めた！
+        https://apps.apple.com/gm/app/積み積み/id6779612241
+        """
+        // プレビュー（共有シート上部のアイコン横）に見出しを出す。
+        let previewTitle = "「積み積み」で \(score) 段まで積めた！"
+        var items: [Any] = [ShareTextSource(text: text, previewTitle: previewTitle, previewImage: image)]
+        if let image = image {
+            items.append(image)
+        }
         let activity = UIActivityViewController(activityItems: items, applicationActivities: nil)
         if let pop = activity.popoverPresentationController {
             pop.sourceView = view
@@ -81,5 +90,58 @@ extension GameViewController: GameViewDelegate {
         AdsManager.shared.showInterstitialIfReady(from: self) {
             completion()
         }
+    }
+}
+
+// MARK: - Share Item Source
+
+/// Provides share text for messaging activities, but omits it for image-only
+/// activities like "Save Image" so the user just gets a clean screenshot.
+/// Also supplies LPLinkMetadata so the share sheet's top preview shows a title
+/// (and the result image) next to the app icon instead of an icon alone.
+private final class ShareTextSource: NSObject, UIActivityItemSource {
+
+    private let text: String
+    private let previewTitle: String
+    private let previewImage: UIImage?
+
+    init(text: String, previewTitle: String, previewImage: UIImage?) {
+        self.text = text
+        self.previewTitle = previewTitle
+        self.previewImage = previewImage
+        super.init()
+    }
+
+    func activityViewControllerPlaceholderItem(_ activityViewController: UIActivityViewController) -> Any {
+        text
+    }
+
+    func activityViewController(
+        _ activityViewController: UIActivityViewController,
+        itemForActivityType activityType: UIActivity.ActivityType?
+    ) -> Any? {
+        switch activityType {
+        case .saveToCameraRoll, .assignToContact, .print, .copyToPasteboard:
+            return nil
+        default:
+            // "Save to Files" has no public constant; match by raw value so the
+            // share sheet only writes the image, not a separate text file.
+            if let raw = activityType?.rawValue,
+               raw.contains("SaveToFiles") || raw.contains("CloudDocsUI") {
+                return nil
+            }
+            return text
+        }
+    }
+
+    func activityViewControllerLinkMetadata(_ activityViewController: UIActivityViewController) -> LPLinkMetadata? {
+        let metadata = LPLinkMetadata()
+        metadata.title = previewTitle
+        metadata.originalURL = URL(string: "積み積み")
+        if let image = previewImage {
+            metadata.imageProvider = NSItemProvider(object: image)
+            metadata.iconProvider = NSItemProvider(object: image)
+        }
+        return metadata
     }
 }

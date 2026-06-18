@@ -2,8 +2,16 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>ja</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>ja</string>
+	</array>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-1615601076718034~3020049617</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>積み積みの結果画像を写真に保存します。</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

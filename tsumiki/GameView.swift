@@ -18,6 +18,178 @@ private let SKY_NIGHT: [(CGFloat, CGFloat, CGFloat)] = [
     (27/255, 34/255, 71/255),
     (56/255, 50/255, 102/255)
 ]
+private let SKY_DAWN: [(CGFloat, CGFloat, CGFloat)] = [
+    (48/255, 70/255, 124/255),
+    (236/255, 145/255, 135/255),
+    (252/255, 213/255, 170/255)
+]
+private let SKY_DEEP_NIGHT: [(CGFloat, CGFloat, CGFloat)] = [
+    (2/255, 4/255, 14/255),
+    (10/255, 14/255, 32/255),
+    (22/255, 24/255, 56/255)
+]
+
+// MARK: - Score Comments
+
+private let SCORE_COMMENTS: [(range: ClosedRange<Int>, lines: [String])] = [
+    (0...0, [
+        "もう一度挑戦！",
+        "肩慣らし、肩慣らし",
+        "ここからここから",
+        "次はきっと積める"
+    ]),
+    (1...2, [
+        "あとちょっと",
+        "感触は掴めた？",
+        "焦らず、ゆっくり",
+        "もう少しで形になる"
+    ]),
+    (3...5, [
+        "いいかんじ",
+        "リズムが見えてきた",
+        "悪くない手つき",
+        "目が慣れてきた？"
+    ]),
+    (6...9, [
+        "うまいね！",
+        "なかなかやるね",
+        "順調、順調",
+        "コツを掴んだみたい"
+    ]),
+    (10...14, [
+        "すごい！",
+        "リズム感あるね",
+        "丁寧な仕事",
+        "もう上級者"
+    ]),
+    (15...19, [
+        "ほんとに上手",
+        "もう手慣れたもの",
+        "美しい積み",
+        "頂が見えてきた"
+    ]),
+    (20...29, [
+        "見事な腕前！",
+        "巨匠の手つき",
+        "風格がある",
+        "もはや職人"
+    ]),
+    (30...39, [
+        "天を目指す者",
+        "雲が近い",
+        "塔師の領分",
+        "黄昏が遠ざかる"
+    ]),
+    (40...49, [
+        "神業の域",
+        "息を呑む高さ",
+        "夜空に届きそう",
+        "並の積み手じゃない"
+    ]),
+    (50...59, [
+        "明けの空に届いた",
+        "夜を越えてきたね",
+        "暁の高み",
+        "ここまで来た人は数人"
+    ]),
+    (60...69, [
+        "光が見えるね",
+        "朝日が眩しい",
+        "雲海の入り口",
+        "天をかすめてる"
+    ]),
+    (70...79, [
+        "もはや伝説",
+        "雲海の上を歩く",
+        "鳥より高く",
+        "ここは別世界"
+    ]),
+    (80...89, [
+        "神々の住む高さ",
+        "風がうたう",
+        "誰も知らない景色",
+        "歴史に残る積み"
+    ]),
+    (90...99, [
+        "あと少しで星に届く",
+        "宇宙が近い",
+        "限界の縁",
+        "100段が見える"
+    ])
+]
+
+private let LEGEND_COMMENTS: [String] = [
+    "夜がまた来た",
+    "宇宙の扉、開く",
+    "あなた、神様？",
+    "もはや神話",
+    "100段の主",
+    "積み積み究極形態",
+    "歴史に名を刻んだ"
+]
+
+private func pickScoreComment(score: Int) -> String {
+    if score >= 100 {
+        return LEGEND_COMMENTS.randomElement() ?? ""
+    }
+    for bucket in SCORE_COMMENTS where bucket.range.contains(score) {
+        return bucket.lines.randomElement() ?? ""
+    }
+    return ""
+}
+
+// MARK: - Sky Palette
+
+private struct SkyPalette {
+    let top: CGColor
+    let mid: CGColor
+    let bottom: CGColor
+    let darkness: CGFloat     // controls star and moon visibility
+    let dawnAmount: CGFloat   // controls sun visibility
+}
+
+private func lerpRGB(
+    _ c1: (CGFloat, CGFloat, CGFloat),
+    _ c2: (CGFloat, CGFloat, CGFloat),
+    t: CGFloat
+) -> CGColor {
+    CGColor(red:   c1.0 + (c2.0 - c1.0) * t,
+            green: c1.1 + (c2.1 - c1.1) * t,
+            blue:  c1.2 + (c2.2 - c1.2) * t,
+            alpha: 1)
+}
+
+private func skyPalette(forCamY camY: CGFloat) -> SkyPalette {
+    let n = max(0, camY / 52)  // BLOCK_H = 52
+    if n < 50 {
+        let t = min(1, n / 50)
+        return SkyPalette(
+            top:    lerpRGB(SKY_DUSK[0], SKY_NIGHT[0], t: t),
+            mid:    lerpRGB(SKY_DUSK[1], SKY_NIGHT[1], t: t),
+            bottom: lerpRGB(SKY_DUSK[2], SKY_NIGHT[2], t: t),
+            darkness: t,
+            dawnAmount: 0
+        )
+    } else if n < 100 {
+        let t = (n - 50) / 50
+        return SkyPalette(
+            top:    lerpRGB(SKY_NIGHT[0], SKY_DAWN[0], t: t),
+            mid:    lerpRGB(SKY_NIGHT[1], SKY_DAWN[1], t: t),
+            bottom: lerpRGB(SKY_NIGHT[2], SKY_DAWN[2], t: t),
+            darkness: max(0.18, 1 - 0.82 * t),
+            dawnAmount: t
+        )
+    } else {
+        let t = min(1, (n - 100) / 50)
+        return SkyPalette(
+            top:    lerpRGB(SKY_DAWN[0], SKY_DEEP_NIGHT[0], t: t),
+            mid:    lerpRGB(SKY_DAWN[1], SKY_DEEP_NIGHT[1], t: t),
+            bottom: lerpRGB(SKY_DAWN[2], SKY_DEEP_NIGHT[2], t: t),
+            darkness: 0.18 + 0.82 * t,
+            dawnAmount: max(0, 1 - t)
+        )
+    }
+}
 
 private struct StarDot {
     let x, y, size, phase: CGFloat
@@ -58,13 +230,15 @@ private struct Ring {
     var alpha: CGFloat = 0.9
 }
 
-private enum GamePhase { case title, playing, over }
+private enum GamePhase { case title, playing, over, viewingTower }
+
+private let BEST_SCORE_KEY = "tsumiki.bestScore"
 
 // MARK: - Delegate
 
 protocol GameViewDelegate: AnyObject {
     func gameViewDidRequestSettings()
-    func gameViewDidRequestShare(score: Int)
+    func gameViewDidRequestShare(score: Int, image: UIImage?)
     func gameViewDidRequestMainMenu(score: Int, completion: @escaping () -> Void)
 }
 
@@ -89,12 +263,19 @@ final class GameView: UIView {
     private var score: Int = 0
     private var best: Int = 0
     private var comboMsg: (n: Int, until: TimeInterval)?
+    private var lastComment: String = ""
 
     // Tap zones (set during draw, consumed in handleTap)
     private var settingsBtnRect: CGRect = .zero
     private var retryBtnRect: CGRect = .zero
     private var menuBtnRect: CGRect = .zero
     private var shareBtnRect: CGRect = .zero
+    private var viewTowerBtnRect: CGRect = .zero
+    private var closeBtnRect: CGRect = .zero
+
+    // Tower viewing state
+    private var preViewCamY: CGFloat = 0
+    private var panStartCamY: CGFloat = 0
 
     private var displayLink: CADisplayLink?
 
@@ -114,9 +295,13 @@ final class GameView: UIView {
         isOpaque = true
         clearsContextBeforeDrawing = false
         backgroundColor = UIColor(red: 71/255, green: 48/255, blue: 102/255, alpha: 1)
+        best = UserDefaults.standard.integer(forKey: BEST_SCORE_KEY)
         let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
         tap.delegate = self
         addGestureRecognizer(tap)
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+        pan.delegate = self
+        addGestureRecognizer(pan)
         displayLink = CADisplayLink(target: self, selector: #selector(tick(_:)))
         displayLink?.add(to: .main, forMode: .common)
     }
@@ -132,7 +317,9 @@ final class GameView: UIView {
     }
 
     private func stepPhysics() {
-        camY += (camTarget - camY) * 0.08
+        if phase != .viewingTower {
+            camY += (camTarget - camY) * 0.08
+        }
         for i in pieces.indices {
             pieces[i].vy += 0.5
             pieces[i].y -= pieces[i].vy
@@ -163,7 +350,15 @@ final class GameView: UIView {
         case .over:
             guard t - overAt > 0.4 else { return }
             if shareBtnRect.contains(p) {
-                delegate?.gameViewDidRequestShare(score: score)
+                let image = makeShareImage(score: score)
+                delegate?.gameViewDidRequestShare(score: score, image: image)
+                return
+            }
+            if viewTowerBtnRect.contains(p) {
+                preViewCamY = camY
+                camY = CGFloat(max(stack.count - 1, 0)) * BLOCK_H
+                camTarget = camY
+                phase = .viewingTower
                 return
             }
             if menuBtnRect.contains(p) {
@@ -177,6 +372,36 @@ final class GameView: UIView {
                 resetGame(); phase = .playing
                 return
             }
+        case .viewingTower:
+            if closeBtnRect.contains(p) {
+                camY = preViewCamY
+                camTarget = preViewCamY
+                phase = .over
+                return
+            }
+        }
+    }
+
+    @objc private func handlePan(_ sender: UIPanGestureRecognizer) {
+        guard phase == .viewingTower else { return }
+        let translation = sender.translation(in: self).y
+        let baseS = min(bounds.width, 560) / 760
+        switch sender.state {
+        case .began:
+            panStartCamY = camY
+        case .changed:
+            // Finger-down drags the tower down (camera moves up the world).
+            // Divide by scale so 1pt of finger maps to 1pt on screen, then
+            // multiply so a single swipe traverses several stories at a time.
+            let panSpeed: CGFloat = 2.2
+            let raw = panStartCamY + (translation / max(baseS, 0.001)) * panSpeed
+            let maxCamY = CGFloat(max(stack.count - 1, 0)) * BLOCK_H + BLOCK_H * 2
+            let minCamY: CGFloat = -BLOCK_H * 2
+            camY = min(max(raw, minCamY), maxCamY)
+            camTarget = camY
+            setNeedsDisplay()
+        default:
+            break
         }
     }
 
@@ -188,6 +413,7 @@ final class GameView: UIView {
         camY = 0; camTarget = 0; combo = 0
         hue0 = CGFloat.random(in: 0..<360)
         score = 0; comboMsg = nil
+        lastComment = ""
         spawnMoving()
     }
 
@@ -223,8 +449,12 @@ final class GameView: UIView {
             pieces.append(FallingPiece(x: px, z: pz, w: mv.w, d: mv.d, y: yLevel, hue: blockHue(idx: mv.idx)))
             moving = nil
             overAt = t
-            best = max(best, stack.count - 1)
             score = stack.count - 1
+            if score > best {
+                best = score
+                UserDefaults.standard.set(best, forKey: BEST_SCORE_KEY)
+            }
+            lastComment = pickScoreComment(score: score)
             phase = .over
             AdsManager.shared.recordGameEnd()
             return
@@ -265,76 +495,88 @@ final class GameView: UIView {
 
     override func draw(_ rect: CGRect) {
         guard let ctx = UIGraphicsGetCurrentContext() else { return }
+        drawScene(ctx: ctx, rect: rect, viewing: phase == .viewingTower)
+        drawHUD(ctx: ctx, rect: rect)
+    }
 
+    /// Renders sky, tower, pieces, and the moving block into the given context.
+    /// When `viewing` is true, all blocks fit on screen and dynamic elements are hidden.
+    private func drawScene(ctx: CGContext, rect: CGRect, viewing: Bool) {
         let W = rect.width, H = rect.height
-        let S = min(W, 560) / 760
-        let cx = W / 2, baseY = H * 0.62
-        let skyP = min(1, camY / (BLOCK_H * 42))
+        let baseS = min(W, 560) / 760
+        let cx = W / 2
+        let S = baseS
+        let baseY = H * 0.62
+        let camYUse = camY
 
         func proj(_ x: CGFloat, _ y: CGFloat, _ z: CGFloat) -> CGPoint {
             CGPoint(
                 x: cx + (x - z) * ISO_X * S,
-                y: baseY + ((x + z) * 0.5 - (y - camY)) * S
+                y: baseY + ((x + z) * 0.5 - (y - camYUse)) * S
             )
         }
 
-        drawSky(ctx: ctx, W: W, H: H, p: skyP)
-        drawStars(ctx: ctx, W: W, H: H, p: skyP)
-        drawMoon(ctx: ctx, W: W, H: H, p: skyP)
+        let palette = skyPalette(forCamY: camY)
+        drawSky(ctx: ctx, W: W, H: H, palette: palette)
+        drawStars(ctx: ctx, W: W, H: H, palette: palette)
+        drawMoon(ctx: ctx, W: W, H: H, palette: palette)
+        drawSun(ctx: ctx, W: W, H: H, palette: palette)
 
         // Tower
-        let first = max(0, stack.count - 14)
+        let first = viewing ? 0 : max(0, stack.count - 14)
         for i in first..<stack.count {
             let b = stack[i]
             let yB: CGFloat = i == 0 ? -BLOCK_H * 4 : CGFloat(i) * BLOCK_H
             let h: CGFloat  = i == 0 ? BLOCK_H * 5  : BLOCK_H
-            let alpha: CGFloat = i < first + 3
-                ? min(1, CGFloat(i - first) / 3 + (i == stack.count - 1 ? 1 : 0.4))
-                : 1
+            let alpha: CGFloat
+            if viewing {
+                alpha = 1
+            } else {
+                alpha = i < first + 3
+                    ? min(1, CGFloat(i - first) / 3 + (i == stack.count - 1 ? 1 : 0.4))
+                    : 1
+            }
             drawBox(ctx: ctx, proj: proj, x: b.x, z: b.z, w: b.w, d: b.d, yBottom: yB, h: h, hue: blockHue(idx: i), alpha: alpha)
         }
 
-        // Falling pieces
-        for pc in pieces {
-            drawBox(ctx: ctx, proj: proj, x: pc.x, z: pc.z, w: pc.w, d: pc.d, yBottom: pc.y, h: BLOCK_H, hue: pc.hue, alpha: pc.alpha)
-        }
+        if !viewing {
+            // Falling pieces
+            for pc in pieces {
+                drawBox(ctx: ctx, proj: proj, x: pc.x, z: pc.z, w: pc.w, d: pc.d, yBottom: pc.y, h: BLOCK_H, hue: pc.hue, alpha: pc.alpha)
+            }
 
-        // Perfect rings
-        for ring in rings {
-            let ce = proj(ring.x, ring.y, ring.z)
-            let rx = ring.r * ISO_X, ry = ring.r * 0.5
-            ctx.setStrokeColor(CGColor(red: 1, green: 240/255, blue: 200/255, alpha: ring.alpha))
-            ctx.setLineWidth(2.5)
-            ctx.strokeEllipse(in: CGRect(x: ce.x - rx, y: ce.y - ry, width: rx * 2, height: ry * 2))
-        }
+            // Perfect rings
+            for ring in rings {
+                let ce = proj(ring.x, ring.y, ring.z)
+                let rx = ring.r * ISO_X, ry = ring.r * 0.5
+                ctx.setStrokeColor(CGColor(red: 1, green: 240/255, blue: 200/255, alpha: ring.alpha))
+                ctx.setLineWidth(2.5)
+                ctx.strokeEllipse(in: CGRect(x: ce.x - rx, y: ce.y - ry, width: rx * 2, height: ry * 2))
+            }
 
-        // Moving block
-        if let mv = moving, phase == .playing {
-            let pos = movingPos(mv: mv)
-            let bx = mv.axis == .x ? pos : stack.last!.x
-            let bz = mv.axis == .z ? pos : stack.last!.z
-            drawBox(ctx: ctx, proj: proj, x: bx, z: bz, w: mv.w, d: mv.d,
-                    yBottom: CGFloat(stack.count) * BLOCK_H, h: BLOCK_H, hue: blockHue(idx: mv.idx), alpha: 1)
+            // Moving block
+            if let mv = moving, phase == .playing {
+                let pos = movingPos(mv: mv)
+                let bx = mv.axis == .x ? pos : stack.last!.x
+                let bz = mv.axis == .z ? pos : stack.last!.z
+                drawBox(ctx: ctx, proj: proj, x: bx, z: bz, w: mv.w, d: mv.d,
+                        yBottom: CGFloat(stack.count) * BLOCK_H, h: BLOCK_H, hue: blockHue(idx: mv.idx), alpha: 1)
+            }
         }
-
-        drawHUD(ctx: ctx, rect: rect)
     }
 
     // MARK: Scene Elements
 
-    private func drawSky(ctx: CGContext, W: CGFloat, H: CGFloat, p: CGFloat) {
-        let c0 = lerpColor(SKY_DUSK[0], SKY_NIGHT[0], t: p)
-        let c1 = lerpColor(SKY_DUSK[1], SKY_NIGHT[1], t: p)
-        let c2 = lerpColor(SKY_DUSK[2], SKY_NIGHT[2], t: p)
+    private func drawSky(ctx: CGContext, W: CGFloat, H: CGFloat, palette: SkyPalette) {
         guard let grad = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                                    colors: [c0, c1, c2] as CFArray,
+                                    colors: [palette.top, palette.mid, palette.bottom] as CFArray,
                                     locations: [0, 0.55, 1]) else { return }
         ctx.drawLinearGradient(grad, start: .zero, end: CGPoint(x: 0, y: H), options: [])
     }
 
-    private func drawStars(ctx: CGContext, W: CGFloat, H: CGFloat, p: CGFloat) {
-        guard p > 0.05 else { return }
-        let baseAlpha = min(1, (p - 0.05) * 1.6)
+    private func drawStars(ctx: CGContext, W: CGFloat, H: CGFloat, palette: SkyPalette) {
+        guard palette.darkness > 0.05 else { return }
+        let baseAlpha = min(1, (palette.darkness - 0.05) * 1.6)
         for star in STARS {
             let tw = 0.6 + 0.4 * sin(CGFloat(t) * 0.0012 + star.phase)
             ctx.setAlpha(baseAlpha * tw * 0.9)
@@ -345,16 +587,65 @@ final class GameView: UIView {
         ctx.setAlpha(1)
     }
 
-    private func drawMoon(ctx: CGContext, W: CGFloat, H: CGFloat, p: CGFloat) {
-        guard p > 0.25 else { return }
-        let ma = min(1, (p - 0.25) * 2.2)
-        ctx.setAlpha(ma)
+    private func drawMoon(ctx: CGContext, W: CGFloat, H: CGFloat, palette: SkyPalette) {
+        guard palette.darkness > 0.25 else { return }
+        let ma = min(1, (palette.darkness - 0.25) * 2.2)
         let mx = W * 0.8, my = H * 0.16, mr: CGFloat = 26
-        ctx.setFillColor(CGColor(red: 253/255, green: 243/255, blue: 216/255, alpha: 1))
-        ctx.fillEllipse(in: CGRect(x: mx - mr, y: my - mr, width: mr * 2, height: mr * 2))
         let mr2 = mr * 0.86
-        ctx.setFillColor(lerpColor(SKY_DUSK[0], SKY_NIGHT[0], t: p))
-        ctx.fillEllipse(in: CGRect(x: mx - mr * 0.42 - mr2, y: my - mr * 0.18 - mr2, width: mr2 * 2, height: mr2 * 2))
+
+        // Render the crescent in an offscreen transparent context. We fill the
+        // outer disc with cream, then "punch out" the inner disc with .clear,
+        // which yields a properly antialiased crescent with no leftover halo
+        // ring around the original disc outline.
+        let pad: CGFloat = 2
+        let size = CGSize(width: mr * 2 + pad * 2, height: mr * 2 + pad * 2)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let crescent = renderer.image { rendererCtx in
+            let c = rendererCtx.cgContext
+            c.setFillColor(CGColor(red: 253/255, green: 243/255, blue: 216/255, alpha: 1))
+            c.fillEllipse(in: CGRect(x: pad, y: pad, width: mr * 2, height: mr * 2))
+            let innerCenterX = pad + mr - mr * 0.42
+            let innerCenterY = pad + mr - mr * 0.18
+            c.setBlendMode(.clear)
+            c.fillEllipse(in: CGRect(
+                x: innerCenterX - mr2,
+                y: innerCenterY - mr2,
+                width: mr2 * 2,
+                height: mr2 * 2
+            ))
+        }
+
+        // Pass `alpha:` explicitly — UIImage.draw(in:) ignores the context's
+        // setAlpha, which made the moon pop in at full opacity instead of
+        // fading up smoothly as the sky darkened.
+        crescent.draw(
+            in: CGRect(x: mx - mr - pad, y: my - mr - pad, width: size.width, height: size.height),
+            blendMode: .normal,
+            alpha: ma
+        )
+    }
+
+    /// Sunrise disc for the dawn phase (visible roughly between 50 and 100 stories).
+    private func drawSun(ctx: CGContext, W: CGFloat, H: CGFloat, palette: SkyPalette) {
+        guard palette.dawnAmount > 0.1 else { return }
+        let visible = min(1, (palette.dawnAmount - 0.1) * 1.4)
+        let sx = W * 0.22, sy = H * 0.68, sr: CGFloat = 30
+        if let halo = CGGradient(
+            colorsSpace: CGColorSpaceCreateDeviceRGB(),
+            colors: [
+                CGColor(red: 1, green: 225/255, blue: 175/255, alpha: 0.55 * visible),
+                CGColor(red: 1, green: 200/255, blue: 150/255, alpha: 0)
+            ] as CFArray,
+            locations: [0, 1]
+        ) {
+            ctx.drawRadialGradient(halo,
+                                   startCenter: CGPoint(x: sx, y: sy), startRadius: 0,
+                                   endCenter: CGPoint(x: sx, y: sy), endRadius: sr * 3.6,
+                                   options: [])
+        }
+        ctx.setAlpha(visible)
+        ctx.setFillColor(CGColor(red: 1, green: 240/255, blue: 208/255, alpha: 1))
+        ctx.fillEllipse(in: CGRect(x: sx - sr, y: sy - sr, width: sr * 2, height: sr * 2))
         ctx.setAlpha(1)
     }
 
@@ -405,6 +696,8 @@ final class GameView: UIView {
         retryBtnRect = .zero
         menuBtnRect = .zero
         shareBtnRect = .zero
+        viewTowerBtnRect = .zero
+        closeBtnRect = .zero
 
         switch phase {
         case .title:
@@ -486,19 +779,24 @@ final class GameView: UIView {
                 .kern: 3.0
             ]
 
+            let bestText = "BEST \(best)"
             let hereH    = ("ここまで" as NSString).size(withAttributes: hereAttr).height
             let scoreH   = ("\(score)" as NSString).size(withAttributes: scoreAttr).height
-            let bestH    = ("BEST \(max(best, score))" as NSString).size(withAttributes: bestAttr).height
-            let commentH = (scoreComment(score) as NSString).size(withAttributes: commentAttr).height
+            let bestH    = (bestText as NSString).size(withAttributes: bestAttr).height
+            let commentText = lastComment.isEmpty ? pickScoreComment(score: score) : lastComment
+            let commentH = (commentText as NSString).size(withAttributes: commentAttr).height
             let groupH   = hereH + scoreH + bestH + 18 + commentH
             let groupY   = (H - groupH) / 2 - H * 0.10
 
-            drawCentered("ここまで",                attrs: hereAttr,    in: W, at: groupY)
-            drawCentered("\(score)",                 attrs: scoreAttr,   in: W, at: groupY + hereH)
-            drawCentered("BEST \(max(best, score))", attrs: bestAttr,    in: W, at: groupY + hereH + scoreH)
-            drawCentered(scoreComment(score),        attrs: commentAttr, in: W, at: groupY + hereH + scoreH + bestH + 18)
+            drawCentered("ここまで",  attrs: hereAttr,    in: W, at: groupY)
+            drawCentered("\(score)",  attrs: scoreAttr,   in: W, at: groupY + hereH)
+            drawCentered(bestText,    attrs: bestAttr,    in: W, at: groupY + hereH + scoreH)
+            drawCentered(commentText, attrs: commentAttr, in: W, at: groupY + hereH + scoreH + bestH + 18)
 
             drawOverButtons(cream: cream, in: rect)
+
+        case .viewingTower:
+            drawTowerViewingHUD(cream: cream, in: rect)
         }
     }
 
@@ -525,10 +823,10 @@ final class GameView: UIView {
         let bannerInset: CGFloat = 58
         let bottomInset = max(safe.bottom + 16, 32) + bannerInset
         let bw = min(W - 64, 280)
-        let bh: CGFloat = 48
-        let gap: CGFloat = 10
+        let bh: CGFloat = 46
+        let gap: CGFloat = 8
 
-        let totalH = bh * 3 + gap * 2
+        let totalH = bh * 4 + gap * 3
         var y = H - bottomInset - totalH
 
         let retry = CGRect(x: (W - bw) / 2, y: y, width: bw, height: bh)
@@ -536,14 +834,194 @@ final class GameView: UIView {
         retryBtnRect = retry
         y += bh + gap
 
-        let menu = CGRect(x: (W - bw) / 2, y: y, width: bw, height: bh)
-        drawButton(label: "メインメニュー", rect: menu, cream: cream, filled: false)
-        menuBtnRect = menu
+        let viewTower = CGRect(x: (W - bw) / 2, y: y, width: bw, height: bh)
+        drawButton(label: "塔をみる", rect: viewTower, cream: cream, filled: false)
+        viewTowerBtnRect = viewTower
         y += bh + gap
 
         let share = CGRect(x: (W - bw) / 2, y: y, width: bw, height: bh)
         drawButton(label: "シェアする", rect: share, cream: cream, filled: false)
         shareBtnRect = share
+        y += bh + gap
+
+        let menu = CGRect(x: (W - bw) / 2, y: y, width: bw, height: bh)
+        drawButton(label: "メインメニュー", rect: menu, cream: cream, filled: false)
+        menuBtnRect = menu
+    }
+
+    private func drawTowerViewingHUD(cream: UIColor, in rect: CGRect) {
+        let W = rect.width
+        let safe = safeAreaInsets
+
+        // Header label: "あなたの塔  /  N 段"
+        let headerY = max(safe.top + 18, 28)
+        let labelAttr: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 13, weight: .medium),
+            .foregroundColor: cream.withAlphaComponent(0.8),
+            .kern: 5.0
+        ]
+        let scoreAttr: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 48, weight: .light),
+            .foregroundColor: cream
+        ]
+        let hintAttr: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 11, weight: .regular),
+            .foregroundColor: cream.withAlphaComponent(0.55),
+            .kern: 3.0
+        ]
+        drawCentered("あなたの塔", attrs: labelAttr, in: W, at: headerY)
+        let labelH = ("あなたの塔" as NSString).size(withAttributes: labelAttr).height
+        drawCentered("\(score) 段", attrs: scoreAttr, in: W, at: headerY + labelH + 2)
+        let scoreH = ("\(score) 段" as NSString).size(withAttributes: scoreAttr).height
+        drawCentered("上下にスワイプして見る", attrs: hintAttr, in: W, at: headerY + labelH + 2 + scoreH + 6)
+
+        // Close button at bottom (lifted above banner).
+        let bannerInset: CGFloat = 58
+        let bottomInset = max(safe.bottom + 16, 32) + bannerInset
+        let bw = min(W - 64, 280)
+        let bh: CGFloat = 46
+        let close = CGRect(x: (W - bw) / 2, y: rect.height - bottomInset - bh, width: bw, height: bh)
+        drawButton(label: "閉じる", rect: close, cream: cream, filled: false)
+        closeBtnRect = close
+    }
+
+    // MARK: Share Image
+
+    /// Renders a 1080x1080 share image: white border around a rounded panel
+    /// containing the full tower scene, with the score and brand wordmark below.
+    func makeShareImage(score: Int) -> UIImage {
+        let canvasSize: CGFloat = 1080
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: canvasSize, height: canvasSize))
+        return renderer.image { rendererCtx in
+            let ctx = rendererCtx.cgContext
+
+            // White outer background.
+            ctx.setFillColor(UIColor.white.cgColor)
+            ctx.fill(CGRect(x: 0, y: 0, width: canvasSize, height: canvasSize))
+
+            let outerMargin: CGFloat = 56
+            let panel = CGRect(
+                x: outerMargin, y: outerMargin,
+                width: canvasSize - outerMargin * 2,
+                height: canvasSize - outerMargin * 2
+            )
+            let panelPath = UIBezierPath(roundedRect: panel, cornerRadius: 36)
+
+            // Soft shadow under the panel.
+            ctx.saveGState()
+            ctx.setShadow(offset: CGSize(width: 0, height: 6), blur: 24,
+                          color: UIColor(white: 0, alpha: 0.18).cgColor)
+            ctx.setFillColor(UIColor.white.cgColor)
+            panelPath.fill()
+            ctx.restoreGState()
+
+            // Render the scene clipped to the panel.
+            ctx.saveGState()
+            panelPath.addClip()
+            ctx.translateBy(x: panel.minX, y: panel.minY)
+            drawShareScene(ctx: ctx, size: panel.size, score: score)
+            ctx.restoreGState()
+        }
+    }
+
+    private func drawShareScene(ctx: CGContext, size: CGSize, score: Int) {
+        let W = size.width, H = size.height
+        let towerH = CGFloat(max(stack.count, 1)) * BLOCK_H
+
+        // Compact text band at the bottom so the tower can dominate the panel.
+        let textBandH = H * 0.17
+        let sceneH = H - textBandH
+
+        // Width and height fits; the projected tower width is 2 * BASE * ISO_X * S.
+        let widthLimit = (W * 0.84) / (2 * BASE * ISO_X)
+        let availH = sceneH * 0.94
+        let S = min(widthLimit, availH / towerH)
+
+        // Center the tower vertically inside the scene area.
+        let towerSpan = towerH * S
+        let towerTopY = (sceneH - towerSpan) / 2
+        let baseY = towerTopY + towerSpan
+        let cx = W / 2
+
+        // Sky reflects the player's final height so 50+ shows dawn, 100+ deep night.
+        let palette = skyPalette(forCamY: CGFloat(max(stack.count - 1, 0)) * BLOCK_H)
+
+        func proj(_ x: CGFloat, _ y: CGFloat, _ z: CGFloat) -> CGPoint {
+            CGPoint(
+                x: cx + (x - z) * ISO_X * S,
+                y: baseY + ((x + z) * 0.5 - y) * S
+            )
+        }
+
+        drawSky(ctx: ctx, W: W, H: H, palette: palette)
+        drawStars(ctx: ctx, W: W, H: H, palette: palette)
+        drawMoon(ctx: ctx, W: W, H: H, palette: palette)
+        drawSun(ctx: ctx, W: W, H: H, palette: palette)
+
+        for i in 0..<stack.count {
+            let b = stack[i]
+            let yB: CGFloat = i == 0 ? -BLOCK_H * 4 : CGFloat(i) * BLOCK_H
+            let h: CGFloat  = i == 0 ? BLOCK_H * 5  : BLOCK_H
+            drawBox(ctx: ctx, proj: proj, x: b.x, z: b.z, w: b.w, d: b.d,
+                    yBottom: yB, h: h, hue: blockHue(idx: i), alpha: 1)
+        }
+
+        // Soft gradient under the text band so the wordmark stays legible.
+        let bandRect = CGRect(x: 0, y: H - textBandH, width: W, height: textBandH)
+        let gradColors = [
+            UIColor(white: 0, alpha: 0).cgColor,
+            UIColor(white: 0, alpha: 0.5).cgColor
+        ] as CFArray
+        if let grad = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                 colors: gradColors, locations: [0, 1]) {
+            ctx.drawLinearGradient(grad,
+                                   start: CGPoint(x: 0, y: bandRect.minY),
+                                   end: CGPoint(x: 0, y: bandRect.maxY),
+                                   options: [])
+        }
+
+        let cream = UIColor(red: 1, green: 248/255, blue: 236/255, alpha: 1)
+        let brandAttr: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 22, weight: .medium),
+            .foregroundColor: cream.withAlphaComponent(0.9),
+            .kern: 8.0
+        ]
+        let scoreAttr: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 96, weight: .light),
+            .foregroundColor: cream
+        ]
+        let suffixAttr: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 32, weight: .regular),
+            .foregroundColor: cream.withAlphaComponent(0.92)
+        ]
+
+        let brand = "T S U M I  T S U M I"
+        let scoreText = "\(score)"
+        let suffix = "段"
+        let brandSize = (brand as NSString).size(withAttributes: brandAttr)
+        let scoreSize = (scoreText as NSString).size(withAttributes: scoreAttr)
+        let suffixSize = (suffix as NSString).size(withAttributes: suffixAttr)
+
+        let scoreLineW = scoreSize.width + 12 + suffixSize.width
+        let blockH = brandSize.height + 4 + scoreSize.height
+        let blockY = bandRect.minY + (textBandH - blockH) / 2
+
+        (brand as NSString).draw(
+            at: CGPoint(x: (W - brandSize.width) / 2, y: blockY),
+            withAttributes: brandAttr
+        )
+
+        let scoreX = (W - scoreLineW) / 2
+        let scoreY = blockY + brandSize.height + 4
+        (scoreText as NSString).draw(
+            at: CGPoint(x: scoreX, y: scoreY),
+            withAttributes: scoreAttr
+        )
+        let suffixY = scoreY + scoreSize.height - suffixSize.height - 12
+        (suffix as NSString).draw(
+            at: CGPoint(x: scoreX + scoreSize.width + 12, y: suffixY),
+            withAttributes: suffixAttr
+        )
     }
 
     private func drawButton(label: String, rect: CGRect, cream: UIColor, filled: Bool) {
@@ -578,31 +1056,7 @@ final class GameView: UIView {
         str.draw(at: CGPoint(x: (width - sz.width) / 2, y: y), withAttributes: attrs)
     }
 
-    private func scoreComment(_ s: Int) -> String {
-        switch s {
-        case 0:       return "もう一度挑戦！"
-        case 1...2:   return "あとちょっと"
-        case 3...5:   return "いいかんじ"
-        case 6...9:   return "うまいね！"
-        case 10...14: return "すごい！"
-        case 15...19: return "ほんとに上手"
-        case 20...29: return "見事な腕前！"
-        default:      return "あなた、天才かも"
-        }
-    }
-
     // MARK: Color Helpers
-
-    private func lerpColor(
-        _ c1: (CGFloat, CGFloat, CGFloat),
-        _ c2: (CGFloat, CGFloat, CGFloat),
-        t: CGFloat
-    ) -> CGColor {
-        CGColor(red:   c1.0 + (c2.0 - c1.0) * t,
-                green: c1.1 + (c2.1 - c1.1) * t,
-                blue:  c1.2 + (c2.2 - c1.2) * t,
-                alpha: 1)
-    }
 
     private func blockColors(hue: CGFloat) -> (top: CGColor, right: CGColor, left: CGColor) {
         (hsl(hue, 0.52, 0.64), hsl(hue, 0.50, 0.49), hsl(hue, 0.52, 0.40))
@@ -635,6 +1089,10 @@ extension GameView: UIGestureRecognizerDelegate {
         // Block taps that land inside a modal overlay so the overlay (and only the overlay) handles them.
         for sub in subviews where sub is SettingsOverlay {
             if sub.frame.contains(p) { return false }
+        }
+        // Pan only matters while the player is scrolling through their tower.
+        if gestureRecognizer is UIPanGestureRecognizer && phase != .viewingTower {
+            return false
         }
         return true
     }
