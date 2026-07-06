@@ -28,6 +28,11 @@ private let SKY_DEEP_NIGHT: [(CGFloat, CGFloat, CGFloat)] = [
     (10/255, 14/255, 32/255),
     (22/255, 24/255, 56/255)
 ]
+private let SKY_DAY: [(CGFloat, CGFloat, CGFloat)] = [
+    (74/255, 144/255, 217/255),   // azure zenith
+    (125/255, 185/255, 235/255),  // mid sky
+    (204/255, 230/255, 250/255)   // pale horizon haze
+]
 
 // MARK: - Score Comments
 
@@ -148,6 +153,10 @@ private struct SkyPalette {
     let dawnAmount: CGFloat   // controls sun visibility
 }
 
+private func rgb(_ c: (CGFloat, CGFloat, CGFloat)) -> CGColor {
+    CGColor(red: c.0, green: c.1, blue: c.2, alpha: 1)
+}
+
 private func lerpRGB(
     _ c1: (CGFloat, CGFloat, CGFloat),
     _ c2: (CGFloat, CGFloat, CGFloat),
@@ -160,9 +169,14 @@ private func lerpRGB(
 }
 
 private func skyPalette(forCamY camY: CGFloat) -> SkyPalette {
-    let n = max(0, camY / 52)  // BLOCK_H = 52
-    if n < 50 {
-        let t = min(1, n / 50)
+    // n is roughly the story number (BLOCK_H = 52).
+    // Arc: dusk → night → (dawn breaks ~44) → blue daylight by ~50 →
+    // climbing beyond the clouds the sky deepens back toward space/night.
+    let n = max(0, camY / 52)
+    switch n {
+    case ..<38:
+        // Dusk settling into night.
+        let t = n / 38
         return SkyPalette(
             top:    lerpRGB(SKY_DUSK[0], SKY_NIGHT[0], t: t),
             mid:    lerpRGB(SKY_DUSK[1], SKY_NIGHT[1], t: t),
@@ -170,23 +184,45 @@ private func skyPalette(forCamY camY: CGFloat) -> SkyPalette {
             darkness: t,
             dawnAmount: 0
         )
-    } else if n < 100 {
-        let t = (n - 50) / 50
+    case ..<44:
+        // Deepest night, just before dawn.
+        return SkyPalette(
+            top:    rgb(SKY_NIGHT[0]),
+            mid:    rgb(SKY_NIGHT[1]),
+            bottom: rgb(SKY_NIGHT[2]),
+            darkness: 1,
+            dawnAmount: 0
+        )
+    case ..<47:
+        // Dawn breaks: the sky warms and brightens (around the 45th story).
+        let t = (n - 44) / 3
         return SkyPalette(
             top:    lerpRGB(SKY_NIGHT[0], SKY_DAWN[0], t: t),
             mid:    lerpRGB(SKY_NIGHT[1], SKY_DAWN[1], t: t),
             bottom: lerpRGB(SKY_NIGHT[2], SKY_DAWN[2], t: t),
-            darkness: max(0.18, 1 - 0.82 * t),
-            dawnAmount: t
+            darkness: 1 - 0.75 * t,
+            dawnAmount: 0.7 * t
         )
-    } else {
-        let t = min(1, (n - 100) / 50)
+    case ..<53:
+        // Blue daylight spreads across the sky (well underway by the 50th story).
+        let t = (n - 47) / 6
         return SkyPalette(
-            top:    lerpRGB(SKY_DAWN[0], SKY_DEEP_NIGHT[0], t: t),
-            mid:    lerpRGB(SKY_DAWN[1], SKY_DEEP_NIGHT[1], t: t),
-            bottom: lerpRGB(SKY_DAWN[2], SKY_DEEP_NIGHT[2], t: t),
-            darkness: 0.18 + 0.82 * t,
-            dawnAmount: max(0, 1 - t)
+            top:    lerpRGB(SKY_DAWN[0], SKY_DAY[0], t: t),
+            mid:    lerpRGB(SKY_DAWN[1], SKY_DAY[1], t: t),
+            bottom: lerpRGB(SKY_DAWN[2], SKY_DAY[2], t: t),
+            darkness: 0.25 * (1 - t),
+            dawnAmount: 0.7 + 0.3 * t
+        )
+    default:
+        // Climbing beyond the clouds toward the edge of space: daylight fades,
+        // the sky deepens and the stars return (full night again by ~100).
+        let t = min(1, (n - 53) / 47)
+        return SkyPalette(
+            top:    lerpRGB(SKY_DAY[0], SKY_DEEP_NIGHT[0], t: t),
+            mid:    lerpRGB(SKY_DAY[1], SKY_DEEP_NIGHT[1], t: t),
+            bottom: lerpRGB(SKY_DAY[2], SKY_DEEP_NIGHT[2], t: t),
+            darkness: t,
+            dawnAmount: max(0, 1 - 2 * t)
         )
     }
 }
@@ -279,6 +315,16 @@ final class GameView: UIView {
 
     private var displayLink: CADisplayLink?
 
+    // Redraw throttling: when nothing is animating we only refresh the screen a
+    // few times per second (keeps the slow star twinkle alive) instead of every
+    // frame, which avoids needlessly re-rendering the whole scene on the CPU.
+    private var lastIdleDraw: TimeInterval = 0
+
+    // The crescent moon shape never changes, so we render it into a bitmap once
+    // and reuse it. Previously it was regenerated every frame — the biggest
+    // per-frame allocation and a major source of heat.
+    private var cachedCrescent: UIImage?
+
     // MARK: Init
 
     override init(frame: CGRect) {
@@ -303,6 +349,14 @@ final class GameView: UIView {
         pan.delegate = self
         addGestureRecognizer(pan)
         displayLink = CADisplayLink(target: self, selector: #selector(tick(_:)))
+        // Cap at 60fps. On ProMotion devices the link would otherwise fire at
+        // 120Hz, doubling CPU rendering work (and heat) for no visible benefit
+        // in a slow-paced stacking game.
+        if #available(iOS 15.0, *) {
+            displayLink?.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
+        } else {
+            displayLink?.preferredFramesPerSecond = 60
+        }
         displayLink?.add(to: .main, forMode: .common)
     }
 
@@ -313,7 +367,26 @@ final class GameView: UIView {
     @objc private func tick(_ link: CADisplayLink) {
         t = link.timestamp
         stepPhysics()
-        setNeedsDisplay()
+        if isAnimating {
+            setNeedsDisplay()
+            lastIdleDraw = t
+        } else if t - lastIdleDraw >= 0.2 {
+            // Idle screens (game over, tower viewing) only need an occasional
+            // refresh to keep the sky twinkle alive — redraw ~5 times a second.
+            setNeedsDisplay()
+            lastIdleDraw = t
+        }
+    }
+
+    /// True while something on screen is actually moving, so the scene must be
+    /// redrawn every frame. When false, redraws are throttled (see `tick`).
+    private var isAnimating: Bool {
+        if phase == .title { return true }              // pulsing "tap" text
+        if phase == .playing { return true }            // the block is sliding
+        if !pieces.isEmpty || !rings.isEmpty { return true }
+        if abs(camY - camTarget) > 0.05 { return true } // camera easing
+        if let msg = comboMsg, t < msg.until { return true }
+        return false
     }
 
     private func stepPhysics() {
@@ -577,30 +650,31 @@ final class GameView: UIView {
     private func drawStars(ctx: CGContext, W: CGFloat, H: CGFloat, palette: SkyPalette) {
         guard palette.darkness > 0.05 else { return }
         let baseAlpha = min(1, (palette.darkness - 0.05) * 1.6)
+        // Fill color is constant across all stars — set it once, not 90x/frame.
+        ctx.setFillColor(CGColor(red: 1, green: 247/255, blue: 232/255, alpha: 1))
         for star in STARS {
             let tw = 0.6 + 0.4 * sin(CGFloat(t) * 0.0012 + star.phase)
             ctx.setAlpha(baseAlpha * tw * 0.9)
-            ctx.setFillColor(CGColor(red: 1, green: 247/255, blue: 232/255, alpha: 1))
             ctx.fillEllipse(in: CGRect(x: star.x * W - star.size / 2, y: star.y * H - star.size / 2,
                                        width: star.size, height: star.size))
         }
         ctx.setAlpha(1)
     }
 
-    private func drawMoon(ctx: CGContext, W: CGFloat, H: CGFloat, palette: SkyPalette) {
-        guard palette.darkness > 0.25 else { return }
-        let ma = min(1, (palette.darkness - 0.25) * 2.2)
-        let mx = W * 0.8, my = H * 0.16, mr: CGFloat = 26
-        let mr2 = mr * 0.86
+    private static let moonRadius: CGFloat = 26
+    private static let moonPad: CGFloat = 2
 
-        // Render the crescent in an offscreen transparent context. We fill the
-        // outer disc with cream, then "punch out" the inner disc with .clear,
-        // which yields a properly antialiased crescent with no leftover halo
-        // ring around the original disc outline.
-        let pad: CGFloat = 2
+    /// Builds (once) the crescent bitmap. We fill the outer disc with cream,
+    /// then "punch out" the inner disc with .clear, which yields a properly
+    /// antialiased crescent with no leftover halo ring around the disc outline.
+    /// The shape is constant, so the result is cached and reused every frame.
+    private func crescentImage() -> UIImage {
+        if let img = cachedCrescent { return img }
+        let mr = Self.moonRadius, pad = Self.moonPad
+        let mr2 = mr * 0.86
         let size = CGSize(width: mr * 2 + pad * 2, height: mr * 2 + pad * 2)
         let renderer = UIGraphicsImageRenderer(size: size)
-        let crescent = renderer.image { rendererCtx in
+        let img = renderer.image { rendererCtx in
             let c = rendererCtx.cgContext
             c.setFillColor(CGColor(red: 253/255, green: 243/255, blue: 216/255, alpha: 1))
             c.fillEllipse(in: CGRect(x: pad, y: pad, width: mr * 2, height: mr * 2))
@@ -614,18 +688,30 @@ final class GameView: UIView {
                 height: mr2 * 2
             ))
         }
+        cachedCrescent = img
+        return img
+    }
+
+    private func drawMoon(ctx: CGContext, W: CGFloat, H: CGFloat, palette: SkyPalette) {
+        guard palette.darkness > 0.25 else { return }
+        let ma = min(1, (palette.darkness - 0.25) * 2.2)
+        let mr = Self.moonRadius, pad = Self.moonPad
+        let mx = W * 0.8, my = H * 0.16
+        let crescent = crescentImage()
 
         // Pass `alpha:` explicitly — UIImage.draw(in:) ignores the context's
         // setAlpha, which made the moon pop in at full opacity instead of
         // fading up smoothly as the sky darkened.
         crescent.draw(
-            in: CGRect(x: mx - mr - pad, y: my - mr - pad, width: size.width, height: size.height),
+            in: CGRect(x: mx - mr - pad, y: my - mr - pad,
+                       width: crescent.size.width, height: crescent.size.height),
             blendMode: .normal,
             alpha: ma
         )
     }
 
-    /// Sunrise disc for the dawn phase (visible roughly between 50 and 100 stories).
+    /// Sunrise disc for the dawn phase: appears as dawn breaks (~45th story) and
+    /// fades out once full daylight settles in above.
     private func drawSun(ctx: CGContext, W: CGFloat, H: CGFloat, palette: SkyPalette) {
         guard palette.dawnAmount > 0.1 else { return }
         let visible = min(1, (palette.dawnAmount - 0.1) * 1.4)

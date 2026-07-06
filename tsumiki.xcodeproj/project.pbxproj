@@ -153,13 +153,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 7PU4G736RJ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = tsumiki/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "積み積み";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.puzzle-games";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "積み積みの結果画像を写真に保存します。";
 				INFOPLIST_KEY_NSUserTrackingUsageDescription = "広告をあなたに合わせて表示するために、許可をお願いします。";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -171,8 +172,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
-				PRODUCT_BUNDLE_IDENTIFIER = "eik-awa.ogawawa000.tsumi-tsumi";
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = "eik-awa.tsumi-tsumi";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -190,13 +191,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 7PU4G736RJ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = tsumiki/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "積み積み";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.puzzle-games";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "積み積みの結果画像を写真に保存します。";
 				INFOPLIST_KEY_NSUserTrackingUsageDescription = "広告をあなたに合わせて表示するために、許可をお願いします。";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -208,8 +210,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
-				PRODUCT_BUNDLE_IDENTIFIER = "eik-awa.ogawawa000.tsumi-tsumi";
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = "eik-awa.tsumi-tsumi";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
