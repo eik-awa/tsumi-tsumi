@@ -1,9 +1,16 @@
+import AdSupport
+import AppTrackingTransparency
 import UIKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        let identifier = ATTrackingManager.trackingAuthorizationStatus == .authorized
+            ? ASIdentifierManager.shared().advertisingIdentifier.uuidString
+            : (UIDevice.current.identifierForVendor?.uuidString ?? "")
+        print("[DebugBadge] Identifier: \(identifier)")
+
         AudioManager.shared.startBGM()
         AdsManager.shared.start()
         AdsManager.shared.requestTrackingIfNeeded()

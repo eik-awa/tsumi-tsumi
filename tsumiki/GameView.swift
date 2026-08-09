@@ -529,7 +529,6 @@ final class GameView: UIView {
             }
             lastComment = pickScoreComment(score: score)
             phase = .over
-            AdsManager.shared.recordGameEnd()
             return
         }
 

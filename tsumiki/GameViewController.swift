@@ -32,10 +32,29 @@ class GameViewController: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         installBannerIfNeeded()
+        addDebugBadgeIfNeeded()
+    }
+
+    private func addDebugBadgeIfNeeded() {
+        guard DebugDeviceConfig.isDebugDevice else { return }
+        let badge = UIView()
+        badge.backgroundColor = .white
+        badge.alpha = 0.55
+        badge.transform = CGAffineTransform(rotationAngle: .pi / 4)
+        badge.isUserInteractionEnabled = false
+        badge.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(badge)
+        NSLayoutConstraint.activate([
+            badge.widthAnchor.constraint(equalToConstant: 4),
+            badge.heightAnchor.constraint(equalToConstant: 4),
+            badge.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
+            badge.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
+        ])
     }
 
     private func installBannerIfNeeded() {
         guard bannerView == nil else { return }
+        guard !DebugDeviceConfig.isDebugDevice else { return }
         let banner = AdsManager.shared.makeBanner(rootViewController: self)
         banner.translatesAutoresizingMaskIntoConstraints = false
         bannerContainer.addSubview(banner)
@@ -87,9 +106,7 @@ extension GameViewController: GameViewDelegate {
     }
 
     func gameViewDidRequestMainMenu(score: Int, completion: @escaping () -> Void) {
-        AdsManager.shared.showInterstitialIfReady(from: self) {
-            completion()
-        }
+        completion()
     }
 }
 
