@@ -1,9 +1,12 @@
 import Foundation
 import UIKit
-import AdSupport
-import AppTrackingTransparency
 
 enum DebugDeviceConfig {
+    // 許可不要。同一開発者のアプリが1つでも残っていれば固定値を返す
+    static var persistentDeviceID: String {
+        UIDevice.current.identifierForVendor?.uuidString ?? "unknown"
+    }
+
     private static let registeredIDs: [String] = {
         guard let url = Bundle.main.url(forResource: "debug-config", withExtension: "js"),
               let content = try? String(contentsOf: url, encoding: .utf8) else { return [] }
@@ -21,9 +24,6 @@ enum DebugDeviceConfig {
     }()
 
     static var isDebugDevice: Bool {
-        let identifier = ATTrackingManager.trackingAuthorizationStatus == .authorized
-            ? ASIdentifierManager.shared().advertisingIdentifier.uuidString
-            : (UIDevice.current.identifierForVendor?.uuidString ?? "")
-        return registeredIDs.contains(identifier)
+        registeredIDs.contains(persistentDeviceID)
     }
 }

@@ -1,3 +1,4 @@
+import FirebaseAnalytics
 import UIKit
 
 // MARK: - Constants
@@ -268,7 +269,10 @@ private struct Ring {
 
 private enum GamePhase { case title, playing, over, viewingTower }
 
-private let BEST_SCORE_KEY = "tsumiki.bestScore"
+private let BEST_SCORE_KEY        = "tsumiki.bestScore"
+private let CONTINUE_DATE_KEY     = "tsumiki.continueDate"
+private let CONTINUE_COUNT_KEY    = "tsumiki.continueCount"
+private let CONTINUE_DAILY_LIMIT  = 3
 
 // MARK: - Delegate
 
@@ -276,6 +280,10 @@ protocol GameViewDelegate: AnyObject {
     func gameViewDidRequestSettings()
     func gameViewDidRequestShare(score: Int, image: UIImage?)
     func gameViewDidRequestMainMenu(score: Int, completion: @escaping () -> Void)
+    func gameViewDidEndGame(score: Int)
+    func gameViewDidRequestContinue(completion: @escaping (Bool) -> Void)
+    /// score は「今回の記録」を登録付きで見せたいときに渡す(タイトル画面からは nil)。
+    func gameViewDidRequestRanking(score: Int?)
 }
 
 // MARK: - GameView
@@ -301,6 +309,9 @@ final class GameView: UIView {
     private var comboMsg: (n: Int, until: TimeInterval)?
     private var lastComment: String = ""
 
+    // 1 ゲームにつき 1 回だけ「続きから」を使えるフラグ
+    private var hasUsedContinue = false
+
     // Tap zones (set during draw, consumed in handleTap)
     private var settingsBtnRect: CGRect = .zero
     private var retryBtnRect: CGRect = .zero
@@ -308,6 +319,9 @@ final class GameView: UIView {
     private var shareBtnRect: CGRect = .zero
     private var viewTowerBtnRect: CGRect = .zero
     private var closeBtnRect: CGRect = .zero
+    private var continueBtnRect: CGRect = .zero
+    private var rankingBtnRect: CGRect = .zero
+    private var titleRankingBtnRect: CGRect = .zero
 
     // Tower viewing state
     private var preViewCamY: CGFloat = 0
@@ -417,11 +431,25 @@ final class GameView: UIView {
                 delegate?.gameViewDidRequestSettings()
                 return
             }
+            if titleRankingBtnRect.contains(p) {
+                delegate?.gameViewDidRequestRanking(score: nil)
+                return
+            }
             resetGame(); phase = .playing
         case .playing:
             drop()
         case .over:
             guard t - overAt > 0.4 else { return }
+            if continueBtnRect.contains(p) && !hasUsedContinue && canContinueToday {
+                delegate?.gameViewDidRequestContinue { [weak self] success in
+                    if success { self?.continueGame() }
+                }
+                return
+            }
+            if rankingBtnRect.contains(p) {
+                delegate?.gameViewDidRequestRanking(score: score)
+                return
+            }
             if shareBtnRect.contains(p) {
                 let image = makeShareImage(score: score)
                 delegate?.gameViewDidRequestShare(score: score, image: image)
@@ -487,7 +515,42 @@ final class GameView: UIView {
         hue0 = CGFloat.random(in: 0..<360)
         score = 0; comboMsg = nil
         lastComment = ""
+        hasUsedContinue = false
         spawnMoving()
+    }
+
+    /// 今日まだ続きから機能を使える回数が残っているか判定する。
+    var canContinueToday: Bool {
+        let ud = UserDefaults.standard
+        guard let stored = ud.object(forKey: CONTINUE_DATE_KEY) as? Date,
+              Calendar.current.isDateInToday(stored) else { return true }
+        return ud.integer(forKey: CONTINUE_COUNT_KEY) < CONTINUE_DAILY_LIMIT
+    }
+
+    /// 広告視聴後に現在のスタックから再開する。
+    func continueGame() {
+        let ud = UserDefaults.standard
+        let count: Int
+        if let stored = ud.object(forKey: CONTINUE_DATE_KEY) as? Date,
+           Calendar.current.isDateInToday(stored) {
+            count = ud.integer(forKey: CONTINUE_COUNT_KEY)
+        } else {
+            count = 0
+        }
+        ud.set(Date(), forKey: CONTINUE_DATE_KEY)
+        ud.set(count + 1, forKey: CONTINUE_COUNT_KEY)
+
+        // 最上段のブロックを BASE サイズに戻してプレイしやすくする
+        if !stack.isEmpty {
+            stack[stack.count - 1].w = BASE
+            stack[stack.count - 1].d = BASE
+        }
+
+        pieces = []; rings = []
+        combo = 0; comboMsg = nil
+        hasUsedContinue = true
+        spawnMoving()
+        phase = .playing
     }
 
     private func spawnMoving() {
@@ -526,9 +589,15 @@ final class GameView: UIView {
             if score > best {
                 best = score
                 UserDefaults.standard.set(best, forKey: BEST_SCORE_KEY)
+                Analytics.logEvent("best_score_updated", parameters: ["score": best])
             }
             lastComment = pickScoreComment(score: score)
+            Analytics.logEvent("game_over", parameters: [
+                "score": score,
+                "best_score": best
+            ])
             phase = .over
+            delegate?.gameViewDidEndGame(score: score)
             return
         }
 
@@ -783,6 +852,9 @@ final class GameView: UIView {
         shareBtnRect = .zero
         viewTowerBtnRect = .zero
         closeBtnRect = .zero
+        continueBtnRect = .zero
+        rankingBtnRect = .zero
+        titleRankingBtnRect = .zero
 
         switch phase {
         case .title:
@@ -819,7 +891,19 @@ final class GameView: UIView {
                 .font: UIFont.systemFont(ofSize: 14),
                 .foregroundColor: cream.withAlphaComponent(tapAlpha), .kern: 3.5
             ]
-            drawCentered("タップしてはじめる", attrs: tapAttr, in: W, at: min(groupY + groupH + 56, H * 0.76))
+            let tapY = min(groupY + groupH + 56, H * 0.76)
+            drawCentered("タップしてはじめる", attrs: tapAttr, in: W, at: tapY)
+
+            let tapH = ("タップしてはじめる" as NSString).size(withAttributes: tapAttr).height
+            let rankAttr: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 12, weight: .medium),
+                .foregroundColor: cream.withAlphaComponent(0.55), .kern: 3.0
+            ]
+            let rankY = tapY + tapH + 22
+            drawCentered("ランキングを見る", attrs: rankAttr, in: W, at: rankY)
+            let rankSize = ("ランキングを見る" as NSString).size(withAttributes: rankAttr)
+            titleRankingBtnRect = CGRect(x: (W - rankSize.width) / 2, y: rankY, width: rankSize.width, height: rankSize.height)
+                .insetBy(dx: -20, dy: -14)
 
             // Settings gear (top-right)
             drawSettingsButton(cream: cream, in: rect)
@@ -904,19 +988,35 @@ final class GameView: UIView {
     private func drawOverButtons(cream: UIColor, in rect: CGRect) {
         let W = rect.width, H = rect.height
         let safe = safeAreaInsets
-        // Lift buttons above the AdMob banner (~50pt) that sits at the safe-area bottom.
-        let bannerInset: CGFloat = 58
+        // Lift buttons above the ad banner (~50pt) that sits at the safe-area bottom.
+        let bannerInset: CGFloat = 74
         let bottomInset = max(safe.bottom + 16, 32) + bannerInset
         let bw = min(W - 64, 280)
-        let bh: CGFloat = 46
-        let gap: CGFloat = 8
-
-        let totalH = bh * 4 + gap * 3
+        let showContinue = !hasUsedContinue && canContinueToday
+        let buttonCount: CGFloat = showContinue ? 6 : 5
+        // 「続きから」も表示される 6 個並びの場合だけ少し詰める(以前の最大 5 個・262pt 相当に近づける)。
+        let bh: CGFloat = buttonCount >= 6 ? 40 : 46
+        let gap: CGFloat = buttonCount >= 6 ? 6 : 8
+        let totalH = bh * buttonCount + gap * (buttonCount - 1)
         var y = H - bottomInset - totalH
 
+        // 「続きから」は 1 ゲームにつき 1 回・1 日 3 回まで表示
+        if showContinue {
+            let continueRect = CGRect(x: (W - bw) / 2, y: y, width: bw, height: bh)
+            drawButton(label: "続きから（広告を見る）", rect: continueRect, cream: cream, filled: true)
+            continueBtnRect = continueRect
+            y += bh + gap
+        }
+
         let retry = CGRect(x: (W - bw) / 2, y: y, width: bw, height: bh)
-        drawButton(label: "もう一度", rect: retry, cream: cream, filled: true)
+        drawButton(label: "もう一度", rect: retry, cream: cream, filled: !showContinue)
         retryBtnRect = retry
+        y += bh + gap
+
+        let ranking = CGRect(x: (W - bw) / 2, y: y, width: bw, height: bh)
+        let rankLabel = RankingStore.shared.canSubmit(score: score) ? "ランキングに登録" : "ランキングを見る"
+        drawButton(label: rankLabel, rect: ranking, cream: cream, filled: false)
+        rankingBtnRect = ranking
         y += bh + gap
 
         let viewTower = CGRect(x: (W - bw) / 2, y: y, width: bw, height: bh)
@@ -961,7 +1061,7 @@ final class GameView: UIView {
         drawCentered("上下にスワイプして見る", attrs: hintAttr, in: W, at: headerY + labelH + 2 + scoreH + 6)
 
         // Close button at bottom (lifted above banner).
-        let bannerInset: CGFloat = 58
+        let bannerInset: CGFloat = 74
         let bottomInset = max(safe.bottom + 16, 32) + bannerInset
         let bw = min(W - 64, 280)
         let bh: CGFloat = 46

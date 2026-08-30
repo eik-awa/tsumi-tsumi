@@ -1,5 +1,8 @@
 import LinkPresentation
+import StoreKit
 import UIKit
+
+private let GAME_COUNT_KEY = "tsumiki.gameCount"
 
 class GameViewController: UIViewController {
 
@@ -32,37 +35,40 @@ class GameViewController: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         installBannerIfNeeded()
-        addDebugBadgeIfNeeded()
     }
 
-    private func addDebugBadgeIfNeeded() {
-        guard DebugDeviceConfig.isDebugDevice else { return }
-        let badge = UIView()
-        badge.backgroundColor = .white
-        badge.alpha = 0.55
-        badge.transform = CGAffineTransform(rotationAngle: .pi / 4)
-        badge.isUserInteractionEnabled = false
-        badge.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(badge)
-        NSLayoutConstraint.activate([
-            badge.widthAnchor.constraint(equalToConstant: 4),
-            badge.heightAnchor.constraint(equalToConstant: 4),
-            badge.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
-            badge.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
-        ])
-    }
-
+    /// デバッグ端末では、本番の広告リクエストを送らずプレースホルダーを表示する。
     private func installBannerIfNeeded() {
         guard bannerView == nil else { return }
-        guard !DebugDeviceConfig.isDebugDevice else { return }
-        let banner = AdsManager.shared.makeBanner(rootViewController: self)
-        banner.translatesAutoresizingMaskIntoConstraints = false
-        bannerContainer.addSubview(banner)
-        NSLayoutConstraint.activate([
-            banner.centerXAnchor.constraint(equalTo: bannerContainer.centerXAnchor),
-            banner.centerYAnchor.constraint(equalTo: bannerContainer.centerYAnchor)
-        ])
-        bannerView = banner
+
+        if DebugDeviceConfig.isDebugDevice {
+            let placeholder = DebugAdPlaceholderView()
+            placeholder.hostViewController = self
+            placeholder.translatesAutoresizingMaskIntoConstraints = false
+            bannerContainer.addSubview(placeholder)
+            NSLayoutConstraint.activate([
+                placeholder.leadingAnchor.constraint(equalTo: bannerContainer.leadingAnchor),
+                placeholder.trailingAnchor.constraint(equalTo: bannerContainer.trailingAnchor),
+                placeholder.topAnchor.constraint(equalTo: bannerContainer.topAnchor),
+                placeholder.bottomAnchor.constraint(equalTo: bannerContainer.bottomAnchor)
+            ])
+            bannerView = placeholder
+            return
+        }
+
+        AdsManager.shared.start { [weak self] in
+            guard let self, self.bannerView == nil else { return }
+            let banner = AdsManager.shared.makeBanner(rootViewController: self)
+            banner.translatesAutoresizingMaskIntoConstraints = false
+            self.bannerContainer.addSubview(banner)
+            NSLayoutConstraint.activate([
+                banner.leadingAnchor.constraint(equalTo: self.bannerContainer.leadingAnchor),
+                banner.trailingAnchor.constraint(equalTo: self.bannerContainer.trailingAnchor),
+                banner.topAnchor.constraint(equalTo: self.bannerContainer.topAnchor),
+                banner.bottomAnchor.constraint(equalTo: self.bannerContainer.bottomAnchor)
+            ])
+            self.bannerView = banner
+        }
     }
 
     override var prefersStatusBarHidden: Bool { true }
@@ -107,6 +113,30 @@ extension GameViewController: GameViewDelegate {
 
     func gameViewDidRequestMainMenu(score: Int, completion: @escaping () -> Void) {
         completion()
+    }
+
+    func gameViewDidRequestContinue(completion: @escaping (Bool) -> Void) {
+        AdsManager.shared.showRewarded(from: self, completion: completion)
+    }
+
+    func gameViewDidRequestRanking(score: Int?) {
+        let overlay = RankingOverlay(frame: view.bounds, score: score)
+        overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        overlay.onClose = { [weak overlay] in
+            overlay?.removeFromSuperview()
+        }
+        view.addSubview(overlay)
+    }
+
+    func gameViewDidEndGame(score: Int) {
+        let count = UserDefaults.standard.integer(forKey: GAME_COUNT_KEY) + 1
+        UserDefaults.standard.set(count, forKey: GAME_COUNT_KEY)
+        // 3・10・30 回目にレビューを促す（Apple が年 3 回まで自動制限）
+        guard [3, 10, 30].contains(count) else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard let scene = self?.view.window?.windowScene else { return }
+            SKStoreReviewController.requestReview(in: scene)
+        }
     }
 }
 
@@ -160,5 +190,40 @@ private final class ShareTextSource: NSObject, UIActivityItemSource {
             metadata.iconProvider = NSItemProvider(object: image)
         }
         return metadata
+    }
+}
+
+// MARK: - Debug Ad Placeholder
+
+/// デバッグ端末用のプレースホルダー。バナー領域自体をタップすると LevelPlay の Test Suite が起動する。
+private final class DebugAdPlaceholderView: UIView {
+
+    weak var hostViewController: UIViewController?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = UIColor(white: 0.18, alpha: 1)
+
+        let label = UILabel()
+        label.text = "テストモード"
+        label.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        label.textColor = UIColor(white: 0.55, alpha: 1)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor)
+        ])
+
+        addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleTap)))
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    @objc private func handleTap() {
+        guard let hostViewController else { return }
+        AdsManager.shared.launchTestSuite(from: hostViewController)
     }
 }

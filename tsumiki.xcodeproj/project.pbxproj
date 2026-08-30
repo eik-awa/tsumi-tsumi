@@ -7,7 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		C2CD93C02FDC1E4800930CCD /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = C2CD93BF2FDC1E4800930CCD /* GoogleMobileAds */; };
+		C2C2C75C30332123006CAA84 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = C2C2C75B30332123006CAA84 /* FirebaseAnalytics */; };
+		C2CD93D02FDC1E4800930CCD /* UnityMediationSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C2CD93D22FDC1E4800930CCD /* UnityMediationSDK */; };
+		C2E1F3A130332123006CAA84 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = C2E1F3A030332123006CAA84 /* FirebaseFirestore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,17 +42,27 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C2CD93C02FDC1E4800930CCD /* GoogleMobileAds in Frameworks */,
+				C2C2C75C30332123006CAA84 /* FirebaseAnalytics in Frameworks */,
+				C2CD93D02FDC1E4800930CCD /* UnityMediationSDK in Frameworks */,
+				C2E1F3A130332123006CAA84 /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		C2C2C75A30332123006CAA84 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		C2CD93642FDC0F0600930CCD = {
 			isa = PBXGroup;
 			children = (
 				C2CD936F2FDC0F0600930CCD /* tsumiki */,
+				C2C2C75A30332123006CAA84 /* Frameworks */,
 				C2CD936E2FDC0F0600930CCD /* Products */,
 			);
 			sourceTree = "<group>";
@@ -83,7 +95,9 @@
 			);
 			name = tsumiki;
 			packageProductDependencies = (
-				C2CD93BF2FDC1E4800930CCD /* GoogleMobileAds */,
+				C2CD93D22FDC1E4800930CCD /* UnityMediationSDK */,
+				C2C2C75B30332123006CAA84 /* FirebaseAnalytics */,
+				C2E1F3A030332123006CAA84 /* FirebaseFirestore */,
 			);
 			productName = tsumiki;
 			productReference = C2CD936D2FDC0F0600930CCD /* tsumiki.app */;
@@ -105,16 +119,17 @@
 				};
 			};
 			buildConfigurationList = C2CD93682FDC0F0600930CCD /* Build configuration list for PBXProject "tsumiki" */;
-			developmentRegion = en;
+			developmentRegion = ja;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
+				ja,
 				Base,
 			);
 			mainGroup = C2CD93642FDC0F0600930CCD;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				C2CD93BE2FDC1E4800930CCD /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
+				C2CD93D12FDC1E4800930CCD /* XCRemoteSwiftPackageReference "LevelPlay-Swift-Package" */,
+				C2C2C759303320A1006CAA84 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C2CD936E2FDC0F0600930CCD /* Products */;
@@ -153,7 +168,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = 7PU4G736RJ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = tsumiki/Info.plist;
@@ -172,7 +187,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3;
+				MARKETING_VERSION = 1.7;
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "eik-awa.tsumi-tsumi";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -191,7 +207,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = 7PU4G736RJ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = tsumiki/Info.plist;
@@ -210,7 +226,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3;
+				MARKETING_VERSION = 1.7;
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "eik-awa.tsumi-tsumi";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -368,21 +385,39 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		C2CD93BE2FDC1E4800930CCD /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+		C2C2C759303320A1006CAA84 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 13.5.0;
+				minimumVersion = 12.17.0;
+			};
+		};
+		C2CD93D12FDC1E4800930CCD /* XCRemoteSwiftPackageReference "LevelPlay-Swift-Package" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ironsource-mobile/LevelPlay-Swift-Package";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.5.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		C2CD93BF2FDC1E4800930CCD /* GoogleMobileAds */ = {
+		C2C2C75B30332123006CAA84 /* FirebaseAnalytics */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C2CD93BE2FDC1E4800930CCD /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
-			productName = GoogleMobileAds;
+			package = C2C2C759303320A1006CAA84 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		C2CD93D22FDC1E4800930CCD /* UnityMediationSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C2CD93D12FDC1E4800930CCD /* XCRemoteSwiftPackageReference "LevelPlay-Swift-Package" */;
+			productName = UnityMediationSDK;
+		};
+		C2E1F3A030332123006CAA84 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C2C2C759303320A1006CAA84 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
