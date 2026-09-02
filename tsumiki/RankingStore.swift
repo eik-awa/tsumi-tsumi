@@ -65,14 +65,16 @@ final class RankingStore {
         set { UserDefaults.standard.set(newValue, forKey: bestKey) }
     }
 
-    /// 直近で登録したスコア。これより高いスコアでないと再登録できない(なわとびと同じ規則)。
     private(set) var mySubmittedScore: Int {
         get { UserDefaults.standard.integer(forKey: submittedKey) }
         set { UserDefaults.standard.set(newValue, forKey: submittedKey) }
     }
 
+    /// スコアが 1 以上あれば何度でも登録できる。
+    /// Firestore 側では同名の場合は高い方のスコアだけを保持するため、
+    /// 低いスコアを送っても既存の最高記録が上書きされることはない。
     func canSubmit(score: Int) -> Bool {
-        score > mySubmittedScore
+        score > 0
     }
 
     // MARK: - 個人情報チェック

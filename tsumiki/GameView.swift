@@ -171,7 +171,7 @@ private func lerpRGB(
 
 private func skyPalette(forCamY camY: CGFloat) -> SkyPalette {
     // n is roughly the story number (BLOCK_H = 52).
-    // Arc: dusk → night → (dawn breaks ~44) → blue daylight by ~50 →
+    // Arc: dusk(0) → night(38) → dawn starts(40) → full day(60) →
     // climbing beyond the clouds the sky deepens back toward space/night.
     let n = max(0, camY / 52)
     switch n {
@@ -185,7 +185,7 @@ private func skyPalette(forCamY camY: CGFloat) -> SkyPalette {
             darkness: t,
             dawnAmount: 0
         )
-    case ..<44:
+    case ..<40:
         // Deepest night, just before dawn.
         return SkyPalette(
             top:    rgb(SKY_NIGHT[0]),
@@ -194,9 +194,9 @@ private func skyPalette(forCamY camY: CGFloat) -> SkyPalette {
             darkness: 1,
             dawnAmount: 0
         )
-    case ..<47:
-        // Dawn breaks: the sky warms and brightens (around the 45th story).
-        let t = (n - 44) / 3
+    case ..<50:
+        // Dawn breaks gradually from the 40th story.
+        let t = (n - 40) / 10
         return SkyPalette(
             top:    lerpRGB(SKY_NIGHT[0], SKY_DAWN[0], t: t),
             mid:    lerpRGB(SKY_NIGHT[1], SKY_DAWN[1], t: t),
@@ -204,9 +204,9 @@ private func skyPalette(forCamY camY: CGFloat) -> SkyPalette {
             darkness: 1 - 0.75 * t,
             dawnAmount: 0.7 * t
         )
-    case ..<53:
-        // Blue daylight spreads across the sky (well underway by the 50th story).
-        let t = (n - 47) / 6
+    case ..<60:
+        // Blue daylight spreads — fully day by the 60th story.
+        let t = (n - 50) / 10
         return SkyPalette(
             top:    lerpRGB(SKY_DAWN[0], SKY_DAY[0], t: t),
             mid:    lerpRGB(SKY_DAWN[1], SKY_DAY[1], t: t),
@@ -217,7 +217,7 @@ private func skyPalette(forCamY camY: CGFloat) -> SkyPalette {
     default:
         // Climbing beyond the clouds toward the edge of space: daylight fades,
         // the sky deepens and the stars return (full night again by ~100).
-        let t = min(1, (n - 53) / 47)
+        let t = min(1, (n - 60) / 40)
         return SkyPalette(
             top:    lerpRGB(SKY_DAY[0], SKY_DEEP_NIGHT[0], t: t),
             mid:    lerpRGB(SKY_DAY[1], SKY_DEEP_NIGHT[1], t: t),
