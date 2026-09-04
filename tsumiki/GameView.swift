@@ -292,6 +292,9 @@ final class GameView: UIView {
 
     weak var delegate: GameViewDelegate?
 
+    /// オーバーレイ表示中に true にするとタップ・パン入力を無視する。
+    var isInputBlocked: Bool = false
+
     // State
     private var stack: [Block] = []
     private var moving: MovingBlock?
@@ -423,6 +426,7 @@ final class GameView: UIView {
     // MARK: Input
 
     @objc private func handleTap(_ sender: UITapGestureRecognizer) {
+        guard !isInputBlocked else { return }
         let p = sender.location(in: self)
 
         switch phase {
@@ -484,7 +488,7 @@ final class GameView: UIView {
     }
 
     @objc private func handlePan(_ sender: UIPanGestureRecognizer) {
-        guard phase == .viewingTower else { return }
+        guard !isInputBlocked, phase == .viewingTower else { return }
         let translation = sender.translation(in: self).y
         let baseS = min(bounds.width, 560) / 760
         switch sender.state {

@@ -14,10 +14,13 @@ import UIKit
 
 final class RankingOverlay: UIView {
 
+    private enum RankingPeriod: Int { case day = 0, month = 1, all = 2 }
+
     private let dim = UIView()
     private let card = UIView()
     private let titleLabel = UILabel()
     private let subtitleLabel = UILabel()
+    private let periodControl = UISegmentedControl(items: ["24時間", "今月", "総合"])
 
     // Submit form
     private let scoreLabel = UILabel()
@@ -37,6 +40,8 @@ final class RankingOverlay: UIView {
 
     private let pendingScore: Int?
     private var hasSubmitForm: Bool { pendingScore != nil }
+    private var allEntries: [RankingStore.Entry] = []
+    private var currentPeriod: RankingPeriod = .all
 
     private let cream = UIColor(red: 1, green: 248/255, blue: 236/255, alpha: 1)
     private let accent = UIColor(red: 1, green: 233/255, blue: 184/255, alpha: 1)
@@ -83,6 +88,19 @@ final class RankingOverlay: UIView {
         subtitleLabel.font = .systemFont(ofSize: 11, weight: .medium)
         subtitleLabel.textAlignment = .center
         card.addSubview(subtitleLabel)
+
+        periodControl.selectedSegmentIndex = RankingPeriod.all.rawValue
+        periodControl.backgroundColor = cream.withAlphaComponent(0.08)
+        periodControl.selectedSegmentTintColor = cream.withAlphaComponent(0.88)
+        periodControl.setTitleTextAttributes(
+            [.foregroundColor: cream, .font: UIFont.systemFont(ofSize: 12, weight: .medium)],
+            for: .normal)
+        periodControl.setTitleTextAttributes(
+            [.foregroundColor: UIColor(red: 27/255, green: 34/255, blue: 71/255, alpha: 1),
+             .font: UIFont.systemFont(ofSize: 12, weight: .semibold)],
+            for: .selected)
+        periodControl.addTarget(self, action: #selector(periodChanged), for: .valueChanged)
+        card.addSubview(periodControl)
 
         if hasSubmitForm {
             scoreLabel.text = "今回の記録  \(pendingScore ?? 0) 段"
@@ -153,14 +171,16 @@ final class RankingOverlay: UIView {
         super.layoutSubviews()
         let w: CGFloat = min(bounds.width - 40, 340)
         let formH: CGFloat = hasSubmitForm ? 168 : 0
-        let listH: CGFloat = 260
-        let h: CGFloat = 88 + formH + listH + 76
+        let listH: CGFloat = 240
+        let tabH: CGFloat = 40
+        let h: CGFloat = 88 + tabH + formH + listH + 76
         card.frame = CGRect(x: (bounds.width - w) / 2, y: max((bounds.height - h) / 2, 24), width: w, height: min(h, bounds.height - 48))
 
         titleLabel.frame = CGRect(x: 0, y: 18, width: w, height: 28)
         subtitleLabel.frame = CGRect(x: 0, y: 46, width: w, height: 16)
+        periodControl.frame = CGRect(x: 20, y: 68, width: w - 40, height: 32)
 
-        var y: CGFloat = 70
+        var y: CGFloat = 108
         if hasSubmitForm {
             scoreLabel.frame = CGRect(x: 24, y: y, width: w - 48, height: 20)
             y += 26
@@ -188,6 +208,28 @@ final class RankingOverlay: UIView {
         scrollView.contentSize = CGSize(width: scrollView.bounds.width, height: max(listStack.frame.height, scrollView.bounds.height))
     }
 
+    // MARK: - Filtering
+
+    private func currentMonthPrefix() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM"
+        formatter.timeZone = TimeZone.current
+        return formatter.string(from: Date())
+    }
+
+    private func filteredEntries(from entries: [RankingStore.Entry]) -> [RankingStore.Entry] {
+        switch currentPeriod {
+        case .day:
+            let cutoff = Date().timeIntervalSince1970 - 86400
+            return entries.filter { $0.timestamp >= cutoff }
+        case .month:
+            let prefix = currentMonthPrefix()
+            return entries.filter { $0.dateStr.hasPrefix(prefix) }
+        case .all:
+            return entries
+        }
+    }
+
     // MARK: - Board
 
     private func loadBoard(force: Bool) {
@@ -200,16 +242,20 @@ final class RankingOverlay: UIView {
     }
 
     private func render(entries: [RankingStore.Entry]) {
+        allEntries = entries
+        let display = filteredEntries(from: entries)
         listStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        guard !entries.isEmpty else {
+        guard !display.isEmpty else {
             statusLabel.isHidden = false
-            statusLabel.text = "まだ誰も登録していない。\n一番乗りのチャンス。"
+            statusLabel.text = currentPeriod == .all
+                ? "まだ誰も登録していない。\n一番乗りのチャンス。"
+                : "この期間の記録はまだありません。"
             setNeedsLayout()
             return
         }
         statusLabel.isHidden = true
         let myName = RankingStore.shared.myName
-        for (i, entry) in entries.prefix(10).enumerated() {
+        for (i, entry) in display.prefix(10).enumerated() {
             let isMine = !myName.isEmpty && entry.name == myName
             listStack.addArrangedSubview(makeRow(rank: i + 1, entry: entry, isTop: i < 3, isMine: isMine))
         }
@@ -271,6 +317,11 @@ final class RankingOverlay: UIView {
     @objc private func closeTapped() {
         nameField.resignFirstResponder()
         onClose?()
+    }
+
+    @objc private func periodChanged() {
+        currentPeriod = RankingPeriod(rawValue: periodControl.selectedSegmentIndex) ?? .all
+        render(entries: allEntries)
     }
 
     @objc private func submitTapped() {

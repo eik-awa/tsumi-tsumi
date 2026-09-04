@@ -194,10 +194,12 @@ final class RankingStore {
             }
             return
         }
-        firestore.collection(collectionName).document(boardDocID).getDocument { snapshot, error in
+        firestore.collection(collectionName).document(boardDocID).getDocument { [weak self] snapshot, error in
             if let error {
                 print("[RankingStore] fetch failed: \(error)")
-                completion([])
+                // エラー時はメモリキャッシュにフォールバックして上書き消去を防ぐ
+                let fallback = self?.board.map { ["n": $0.name, "s": $0.score, "t": $0.timestamp, "d": $0.dateStr] as [String: Any] } ?? []
+                completion(fallback)
                 return
             }
             completion(snapshot?.data()?["entries"] as? [[String: Any]] ?? [])

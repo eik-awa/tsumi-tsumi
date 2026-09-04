@@ -83,10 +83,12 @@ class GameViewController: UIViewController {
 extension GameViewController: GameViewDelegate {
 
     func gameViewDidRequestSettings() {
+        gameView.isInputBlocked = true
         let overlay = SettingsOverlay(frame: view.bounds)
         overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        overlay.onClose = { [weak overlay] in
+        overlay.onClose = { [weak self, weak overlay] in
             overlay?.removeFromSuperview()
+            self?.gameView.isInputBlocked = false
         }
         view.addSubview(overlay)
     }
@@ -120,10 +122,12 @@ extension GameViewController: GameViewDelegate {
     }
 
     func gameViewDidRequestRanking(score: Int?) {
+        gameView.isInputBlocked = true
         let overlay = RankingOverlay(frame: view.bounds, score: score)
         overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        overlay.onClose = { [weak overlay] in
+        overlay.onClose = { [weak self, weak overlay] in
             overlay?.removeFromSuperview()
+            self?.gameView.isInputBlocked = false
         }
         view.addSubview(overlay)
     }
